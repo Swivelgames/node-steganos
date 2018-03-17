@@ -1,0 +1,34 @@
+{
+  "name": "steganos",
+  "version": "0.0.1",
+  "description": "Node-based implementation of Steganos Secure Communication Protocol",
+  "author": "Joseph Dalrymple <me@swivel.in>",
+  "license": "AGPLv3",
+  "main": "./lib/index.js",
+  "scripts": {
+    "all": "yarn && yarn build && yarn start",
+    "clean": "rm -rf lib/ node_modules/",
+    "build-run": "yarn build && yarn start",
+    "build": "babel src -d lib",
+    "test": "eslint src"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^8.2.1",
+    "babel-plugin-transform-es2015-destructuring": "^6.23.0",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.16.0",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-jsx-a11y": "^6.0.3",
+    "eslint-plugin-react": "^7.5.1"
+  },
+  "private": true,
+  "dependencies": {
+    "csprng": "^0.1.2",
+    "meddle": "^0.0.5",
+    "thenable-events": "^2.0.4",
+    "ursa": "^0.9.4"
+  }
+}
