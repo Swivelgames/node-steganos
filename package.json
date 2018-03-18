@@ -8,9 +8,9 @@
   "scripts": {
     "all": "yarn && yarn build && yarn start",
     "clean": "rm -rf lib/ node_modules/",
-    "build-run": "yarn build && yarn start",
+    "build-run": "yarn build && yarn test",
     "build": "babel src -d lib",
-    "test": "eslint src"
+    "test": "node ./lib/test.js"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -26,6 +26,7 @@
   },
   "private": true,
   "dependencies": {
+    "babel-register": "^6.26.0",
     "csprng": "^0.1.2",
     "meddle": "^0.0.5",
     "thenable-events": "^2.0.4",

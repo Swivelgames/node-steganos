@@ -1,34 +1,29 @@
-/* eslint-disable class-methods-use-this */
 import ursa from 'ursa';
+import crypto from 'crypto';
 import generateCSPRN from 'csprng';
-import Dispatcher from 'thenable-events';
+
+import guid from './utils/guid';
+
+const IV_LENGTH = 16;
 
 // const PEER_UNKNOWN = 0;
 const PEER_HELO = 1;
 const PEER_AUTH = 2;
 
-const guid = () => {
-	function s4() {
-		return Math.floor((1 + Math.random()) * 0x10000)
-			.toString(16)
-			.substring(1);
-	}
-	return `${s4() + s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
-};
-
 const Private = new WeakMap();
 
 export default class Steganos {
-	constructor() {
+	constructor(encoding) {
 		const privKey = ursa.generatePrivateKey();
 		const pubKey = ursa.createPublicKey(privKey.toPublicPem());
+
+		this.encoding = encoding || 'hex';
 
 		Private.set(this, {
 			peers: {},
 			signature: guid(),
 			privKey,
-			pubKey,
-			disp: new Dispatcher()
+			pubKey
 		});
 	}
 
@@ -38,7 +33,7 @@ export default class Steganos {
 		return {
 			signature,
 			type: 'HELO',
-			payload: pubKey
+			payload: pubKey.toPublicPem(this.encoding)
 		};
 	}
 
@@ -57,7 +52,7 @@ export default class Steganos {
 
 		peers[signature] = {
 			stage: PEER_HELO,
-			pubKey: ursa.createPublicKey(theirPublicKey),
+			pubKey: ursa.createPublicKey(theirPublicKey, this.encoding),
 			spk: null
 		};
 	}
@@ -77,7 +72,7 @@ export default class Steganos {
 		peers[theirSignature].stage = PEER_AUTH;
 
 		// Encrypt it using theirPublicKey
-		const encryptedSpk = theirPublicKey.encrypt(spk);
+		const encryptedSpk = theirPublicKey.encrypt(spk, 'utf8', this.encoding);
 
 		// return the encrypted version to send
 		return {
@@ -98,31 +93,84 @@ export default class Steganos {
 			throw new TypeError(`Malformed AUTH Package: Unknown type '${type}'.`);
 		}
 
-		const { peers, privKey, signature: ourSignature } = Private.get(this);
-		const { spk, pubKey: theirPublicKey } = peers[theirSignature];
+		const { peers, privKey } = Private.get(this);
+		const { spk } = peers[theirSignature];
 
 		peers[theirSignature].stage = PEER_AUTH;
 
-		const theirSpk = privKey.decrypt(payload);
+		const theirSpk = privKey.decrypt(payload, this.encoding, 'utf8');
 
 		if (theirSpk !== spk) {
 			throw new Error('Incorrect Shared Private Key');
 		}
-
-		return {
-			signature: ourSignature,
-			type: 'READY',
-			payload: theirPublicKey.encrypt('READY')
-		};
 	}
 
 	// ------------------------
 
 	sendMessage(msg, theirSignature) {
+		const { encoding } = this;
+
 		// Look up theirPublicKey and the spk
+		const { peers, signature: ourSignature } = Private.get(this);
+		const { spk, pubKey: theirPublicKey } = peers[theirSignature];
+
 		// Encrypt message with spk
-		// Encrypt the spk with theirPublicKey
+		const iv = crypto.randomBytes(IV_LENGTH);
+		const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(spk, 'utf8'), iv);
+		const encryptedMsg = cipher.update(msg);
+
+		const finalizedMsg = Buffer.concat([
+			encryptedMsg,
+			cipher.final()
+		]);
+
+		// Encrypt the IV with theirPublicKey
+		const encryptedIv = theirPublicKey.encrypt(
+			iv.toString(encoding), encoding, encoding
+		);
+
 		// Send TEXT message with the encrpyted versions in the payload, signed with our signature
+		return {
+			signature: ourSignature,
+			type: 'TEXT',
+			payload: `${encryptedIv}:${finalizedMsg.toString(encoding)}`
+		};
 	}
-	receiveMessage() {}
+
+	receiveMessage(pkg) {
+		// Grab our private key
+		const { privKey, peers } = Private.get(this);
+
+
+		// Look up the spk using theirSignature (from pkg)
+		const {
+			signature: theirSignature,
+			type,
+			payload
+		} = pkg;
+
+		const { spk } = peers[theirSignature];
+
+		if (type !== 'TEXT') {
+			throw TypeError(`Malformed TYPE Package: Unknown type '${type}'.`);
+		}
+		// Split payload into two parts: "encryptedIv:encryptedMsg"
+		const [encryptedIv, ...encryptedMsg] = payload.split(':');
+
+		// Decrypt the IV using our private key
+		const decryptedIv = privKey.decrypt(encryptedIv, this.encoding);
+
+		// Use the spk and decrypted IV to decrypt message
+		const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(spk, 'utf8'), decryptedIv);
+
+		const encryptedText = Buffer.from(encryptedMsg.join(':'), this.encoding);
+		const decrypted = decipher.update(encryptedText);
+
+		// return decrypted message
+
+		return Buffer.concat([
+			decrypted,
+			decipher.final()
+		]).toString();
+	}
 }
