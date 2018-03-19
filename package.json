@@ -27,5 +27,22 @@
   "dependencies": {
     "csprng": "^0.1.2",
     "ursa": "^0.9.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Swivelgames/node-steganos.git"
+  },
+  "keywords": [
+    "encrypt",
+    "decrypt",
+    "openssl",
+    "crypto",
+    "secure",
+    "protocol",
+    "pkp",
+    "spk",
+    "pgp"
+  ],
+  "bugs": "https://github.com/Swivelgames/node-steganos/issues",
+  "homepage": "https://github.com/Swivelgames/node-steganos#readme"
 }
