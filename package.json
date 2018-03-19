@@ -24,12 +24,8 @@
     "eslint-plugin-jsx-a11y": "^6.0.3",
     "eslint-plugin-react": "^7.5.1"
   },
-  "private": true,
   "dependencies": {
-    "babel-register": "^6.26.0",
     "csprng": "^0.1.2",
-    "meddle": "^0.0.5",
-    "thenable-events": "^2.0.4",
     "ursa": "^0.9.4"
   }
 }
